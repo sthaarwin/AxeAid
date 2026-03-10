@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StatusBar, Modal, Switch, ScrollView } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StatusBar, Modal, Switch, ScrollView, Animated, Dimensions } from 'react-native';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const DRAWER_WIDTH = SCREEN_WIDTH * 0.78;
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { Metronome } from './src/features/metronome/Metronome';
@@ -133,6 +136,78 @@ const TAB_BAR = [
     { key: 'ear-training' as Tab, label: 'Practice', Icon: PracticeIcon },
 ];
 
+/* ─── Animated Drawer ─── */
+const MenuDrawer: React.FC<{
+    visible: boolean;
+    onClose: () => void;
+    children: React.ReactNode;
+}> = ({ visible, onClose, children }) => {
+    const [mounted, setMounted] = useState(false);
+    const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (visible) {
+            setMounted(true);
+            Animated.parallel([
+                Animated.timing(slideAnim, {
+                    toValue: 0,
+                    duration: 280,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 280,
+                    useNativeDriver: true,
+                }),
+            ]).start();
+        } else if (mounted) {
+            Animated.parallel([
+                Animated.timing(slideAnim, {
+                    toValue: -DRAWER_WIDTH,
+                    duration: 240,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(fadeAnim, {
+                    toValue: 0,
+                    duration: 240,
+                    useNativeDriver: true,
+                }),
+            ]).start(() => setMounted(false));
+        }
+    }, [visible]);
+
+    if (!mounted) return null;
+
+    return (
+        <View style={{
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100,
+        }}>
+            {/* Backdrop */}
+            <Animated.View style={{
+                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: 'rgba(0,0,0,0.6)', opacity: fadeAnim,
+            }}>
+                <TouchableOpacity
+                    activeOpacity={1}
+                    onPress={onClose}
+                    style={{ flex: 1 }}
+                />
+            </Animated.View>
+
+            {/* Drawer panel */}
+            <Animated.View style={{
+                position: 'absolute', top: 0, left: 0, bottom: 0,
+                width: DRAWER_WIDTH, backgroundColor: '#111827',
+                paddingTop: 56, paddingHorizontal: 20, paddingBottom: 32,
+                transform: [{ translateX: slideAnim }],
+            }}>
+                {children}
+            </Animated.View>
+        </View>
+    );
+};
+
 /* ─── Settings Modal ─── */
 const TUNING_OPTIONS = ['Standard', 'Drop D', 'Open G', 'DADGAD', 'Half Step Down'];
 const REFERENCE_PITCHES = [432, 436, 440, 442, 444];
@@ -141,6 +216,8 @@ export default function App() {
     const [activeTab, setActiveTab] = useState<Tab>('tuner');
     const [earLevel] = useState(3);
     const [showSettings, setShowSettings] = useState(false);
+    const [showMenu, setShowMenu] = useState(false);
+    const [instrument, setInstrument] = useState('Guitar');
     const [referencePitch, setReferencePitch] = useState(440);
     const [selectedTuning, setSelectedTuning] = useState('Standard');
     const [darkMode, setDarkMode] = useState(true);
@@ -163,7 +240,7 @@ export default function App() {
                     {/* Left button */}
                     <TouchableOpacity
                         activeOpacity={0.6}
-                        onPress={() => { if (activeTab !== 'tuner') setActiveTab('tuner'); }}
+                        onPress={() => { activeTab === 'tuner' ? setShowMenu(true) : setActiveTab('tuner'); }}
                         style={{
                             width: 40, height: 40, borderRadius: 20,
                             backgroundColor: 'rgba(226,232,240,0.1)',
@@ -215,6 +292,142 @@ export default function App() {
                     {activeTab === 'chords' && <ChordLibrary />}
                     {activeTab === 'ear-training' && <EarTrainer />}
                 </View>
+
+                {/* ─── Menu Drawer ─── */}
+                <MenuDrawer visible={showMenu} onClose={() => setShowMenu(false)}>
+                            {/* Profile area */}
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 28 }}>
+                                <View style={{
+                                    width: 48, height: 48, borderRadius: 24,
+                                    backgroundColor: 'rgba(37,189,248,0.15)',
+                                    alignItems: 'center', justifyContent: 'center', marginRight: 14,
+                                }}>
+                                    <PersonIcon color="#25bdf8" />
+                                </View>
+                                <View>
+                                    <Text style={{ color: '#f1f5f9', fontSize: 17, fontWeight: '700' }}>AxeAid</Text>
+                                    <Text style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>Your guitar companion</Text>
+                                </View>
+                            </View>
+
+                            {/* Instrument selector */}
+                            <Text style={{
+                                color: '#64748b', fontSize: 11, fontWeight: '700',
+                                letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10,
+                            }}>
+                                Instrument
+                            </Text>
+                            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 24 }}>
+                                {['Guitar', 'Bass', 'Ukulele'].map((inst) => {
+                                    const active = inst === instrument;
+                                    return (
+                                        <TouchableOpacity
+                                            key={inst}
+                                            onPress={() => setInstrument(inst)}
+                                            activeOpacity={0.7}
+                                            style={{
+                                                flex: 1, paddingVertical: 10, borderRadius: 12,
+                                                backgroundColor: active ? '#25bdf8' : 'rgba(226,232,240,0.06)',
+                                                alignItems: 'center',
+                                            }}
+                                        >
+                                            <Text style={{
+                                                fontSize: 13, fontWeight: '600',
+                                                color: active ? '#0f1d23' : '#94a3b8',
+                                            }}>
+                                                {inst}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+
+                            {/* Quick links */}
+                            <Text style={{
+                                color: '#64748b', fontSize: 11, fontWeight: '700',
+                                letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10,
+                            }}>
+                                Quick Access
+                            </Text>
+                            <View style={{ gap: 2 }}>
+                                {[
+                                    { label: 'Chromatic Tuner', icon: MusicNoteIcon, tab: 'tuner' as Tab },
+                                    { label: 'Metronome', icon: TimerIcon, tab: 'metronome' as Tab },
+                                    { label: 'Chord Library', icon: ChordGridIcon, tab: 'chords' as Tab },
+                                    { label: 'Ear Training', icon: PracticeIcon, tab: 'ear-training' as Tab },
+                                ].map((item) => {
+                                    const isActive = item.tab === activeTab;
+                                    return (
+                                        <TouchableOpacity
+                                            key={item.label}
+                                            activeOpacity={0.6}
+                                            onPress={() => { setActiveTab(item.tab); setShowMenu(false); }}
+                                            style={{
+                                                flexDirection: 'row', alignItems: 'center',
+                                                paddingVertical: 13, paddingHorizontal: 12,
+                                                borderRadius: 12,
+                                                backgroundColor: isActive ? 'rgba(37,189,248,0.1)' : 'transparent',
+                                            }}
+                                        >
+                                            <item.icon color={isActive ? '#25bdf8' : '#94a3b8'} />
+                                            <Text style={{
+                                                color: isActive ? '#25bdf8' : '#f1f5f9',
+                                                fontSize: 14, fontWeight: '600', marginLeft: 14,
+                                                flex: 1,
+                                            }}>
+                                                {item.label}
+                                            </Text>
+                                            <ChevronRightIcon color={isActive ? '#25bdf8' : '#334155'} />
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+
+                            {/* Stats summary */}
+                            <Text style={{
+                                color: '#64748b', fontSize: 11, fontWeight: '700',
+                                letterSpacing: 1.5, textTransform: 'uppercase',
+                                marginTop: 24, marginBottom: 10,
+                            }}>
+                                Session Stats
+                            </Text>
+                            <View style={{ flexDirection: 'row', gap: 10 }}>
+                                {[
+                                    { label: 'Practice', value: '23m', sub: 'today' },
+                                    { label: 'Streak', value: '5', sub: 'days' },
+                                    { label: 'Accuracy', value: '78%', sub: 'avg' },
+                                ].map((stat) => (
+                                    <View key={stat.label} style={{
+                                        flex: 1, backgroundColor: 'rgba(226,232,240,0.05)',
+                                        borderRadius: 12, padding: 12, alignItems: 'center',
+                                    }}>
+                                        <Text style={{ color: '#25bdf8', fontSize: 18, fontWeight: '800' }}>
+                                            {stat.value}
+                                        </Text>
+                                        <Text style={{ color: '#64748b', fontSize: 10, fontWeight: '600', marginTop: 2 }}>
+                                            {stat.sub}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </View>
+
+                            {/* Bottom actions */}
+                            <View style={{ marginTop: 'auto', paddingTop: 24, gap: 2 }}>
+                                <TouchableOpacity
+                                    activeOpacity={0.6}
+                                    onPress={() => { setShowMenu(false); setShowSettings(true); }}
+                                    style={{
+                                        flexDirection: 'row', alignItems: 'center',
+                                        paddingVertical: 13, paddingHorizontal: 12, borderRadius: 12,
+                                    }}
+                                >
+                                    <SettingsIcon color="#94a3b8" />
+                                    <Text style={{ color: '#f1f5f9', fontSize: 14, fontWeight: '600', marginLeft: 14 }}>
+                                        Settings
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                </MenuDrawer>
 
                 {/* ─── Settings Modal ─── */}
                 <Modal
