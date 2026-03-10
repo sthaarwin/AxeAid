@@ -14,7 +14,7 @@ type ChordShape = {
     baseFret: number;       // starting fret (1 = open position)
 };
 
-const CHORD_CATEGORIES = ['Major', 'Minor', 'Seventh', 'Other'] as const;
+const CHORD_CATEGORIES = ['Major', 'Minor', 'Seventh', 'Extended', 'Suspended'] as const;
 type ChordCategory = typeof CHORD_CATEGORIES[number];
 
 const CHORDS: Record<ChordCategory, ChordShape[]> = {
@@ -22,40 +22,51 @@ const CHORDS: Record<ChordCategory, ChordShape[]> = {
         { name: 'C', suffix: '', frets: [-1, 3, 2, 0, 1, 0], fingers: [0, 3, 2, 0, 1, 0], barres: [], baseFret: 1 },
         { name: 'D', suffix: '', frets: [-1, -1, 0, 2, 3, 2], fingers: [0, 0, 0, 1, 3, 2], barres: [], baseFret: 1 },
         { name: 'E', suffix: '', frets: [0, 2, 2, 1, 0, 0], fingers: [0, 2, 3, 1, 0, 0], barres: [], baseFret: 1 },
-        { name: 'F', suffix: '', frets: [1, 1, 2, 3, 3, 1], fingers: [1, 1, 2, 4, 3, 1], barres: [1], baseFret: 1 },
+        { name: 'F', suffix: '', frets: [1, 3, 3, 2, 1, 1], fingers: [1, 3, 4, 2, 1, 1], barres: [1], baseFret: 1 },
         { name: 'G', suffix: '', frets: [3, 2, 0, 0, 0, 3], fingers: [2, 1, 0, 0, 0, 3], barres: [], baseFret: 1 },
         { name: 'A', suffix: '', frets: [-1, 0, 2, 2, 2, 0], fingers: [0, 0, 1, 2, 3, 0], barres: [], baseFret: 1 },
-        { name: 'B', suffix: '', frets: [-1, 2, 4, 4, 4, 2], fingers: [0, 1, 3, 3, 3, 1], barres: [2], baseFret: 1 },
+        { name: 'B', suffix: '', frets: [-1, 2, 4, 4, 4, 2], fingers: [0, 1, 2, 3, 4, 1], barres: [2], baseFret: 1 },
+        { name: 'Bb', suffix: '', frets: [-1, 1, 3, 3, 3, 1], fingers: [0, 1, 2, 3, 4, 1], barres: [1], baseFret: 1 },
+        { name: 'Eb', suffix: '', frets: [-1, 6, 8, 8, 8, 6], fingers: [0, 1, 2, 3, 4, 1], barres: [6], baseFret: 6 },
     ],
     Minor: [
-        { name: 'C', suffix: 'm', frets: [-1, 3, 1, 0, 1, 0], fingers: [0, 3, 1, 0, 2, 0], barres: [], baseFret: 3 },
-        { name: 'D', suffix: 'm', frets: [-1, -1, 0, 2, 3, 1], fingers: [0, 0, 0, 2, 3, 1], barres: [], baseFret: 1 },
-        { name: 'E', suffix: 'm', frets: [0, 2, 2, 0, 0, 0], fingers: [0, 2, 3, 0, 0, 0], barres: [], baseFret: 1 },
-        { name: 'F', suffix: 'm', frets: [1, 1, 1, 3, 3, 1], fingers: [1, 1, 1, 4, 3, 1], barres: [1], baseFret: 1 },
-        { name: 'G', suffix: 'm', frets: [3, 1, 0, 0, 3, 3], fingers: [2, 1, 0, 0, 3, 4], barres: [], baseFret: 1 },
-        { name: 'A', suffix: 'm', frets: [-1, 0, 2, 2, 1, 0], fingers: [0, 0, 2, 3, 1, 0], barres: [], baseFret: 1 },
-        { name: 'B', suffix: 'm', frets: [-1, 2, 4, 4, 3, 2], fingers: [0, 1, 3, 4, 2, 1], barres: [2], baseFret: 1 },
+        { name: 'Cm', suffix: 'm', frets: [-1, 3, 5, 5, 4, 3], fingers: [0, 1, 3, 4, 2, 1], barres: [3], baseFret: 3 },
+        { name: 'Dm', suffix: 'm', frets: [-1, -1, 0, 2, 3, 1], fingers: [0, 0, 0, 2, 3, 1], barres: [], baseFret: 1 },
+        { name: 'Em', suffix: 'm', frets: [0, 2, 2, 0, 0, 0], fingers: [0, 2, 3, 0, 0, 0], barres: [], baseFret: 1 },
+        { name: 'Fm', suffix: 'm', frets: [1, 3, 3, 1, 1, 1], fingers: [1, 3, 4, 1, 1, 1], barres: [1], baseFret: 1 },
+        { name: 'Gm', suffix: 'm', frets: [3, 5, 5, 3, 3, 3], fingers: [1, 3, 4, 1, 1, 1], barres: [3], baseFret: 3 },
+        { name: 'Am', suffix: 'm', frets: [-1, 0, 2, 2, 1, 0], fingers: [0, 0, 2, 3, 1, 0], barres: [], baseFret: 1 },
+        { name: 'Bm', suffix: 'm', frets: [-1, 2, 4, 4, 3, 2], fingers: [0, 1, 3, 4, 2, 1], barres: [2], baseFret: 1 },
+        { name: 'F#m', suffix: 'm', frets: [2, 4, 4, 2, 2, 2], fingers: [1, 3, 4, 1, 1, 1], barres: [2], baseFret: 1 },
     ],
     Seventh: [
-        { name: 'C', suffix: '7', frets: [-1, 3, 2, 3, 1, 0], fingers: [0, 3, 2, 4, 1, 0], barres: [], baseFret: 1 },
-        { name: 'D', suffix: '7', frets: [-1, -1, 0, 2, 1, 2], fingers: [0, 0, 0, 2, 1, 3], barres: [], baseFret: 1 },
-        { name: 'E', suffix: '7', frets: [0, 2, 0, 1, 0, 0], fingers: [0, 2, 0, 1, 0, 0], barres: [], baseFret: 1 },
-        { name: 'F', suffix: '7', frets: [1, 1, 2, 1, 3, 1], fingers: [1, 1, 2, 1, 3, 1], barres: [1], baseFret: 1 },
-        { name: 'G', suffix: '7', frets: [3, 2, 0, 0, 0, 1], fingers: [3, 2, 0, 0, 0, 1], barres: [], baseFret: 1 },
-        { name: 'A', suffix: '7', frets: [-1, 0, 2, 0, 2, 0], fingers: [0, 0, 2, 0, 3, 0], barres: [], baseFret: 1 },
-        { name: 'B', suffix: '7', frets: [-1, 2, 1, 2, 0, 2], fingers: [0, 2, 1, 3, 0, 4], barres: [], baseFret: 1 },
+        { name: 'C7', suffix: '7', frets: [-1, 3, 2, 3, 1, 0], fingers: [0, 3, 2, 4, 1, 0], barres: [], baseFret: 1 },
+        { name: 'D7', suffix: '7', frets: [-1, -1, 0, 2, 1, 2], fingers: [0, 0, 0, 2, 1, 3], barres: [], baseFret: 1 },
+        { name: 'E7', suffix: '7', frets: [0, 2, 0, 1, 0, 0], fingers: [0, 2, 0, 1, 0, 0], barres: [], baseFret: 1 },
+        { name: 'G7', suffix: '7', frets: [3, 2, 0, 0, 0, 1], fingers: [3, 2, 0, 0, 0, 1], barres: [], baseFret: 1 },
+        { name: 'A7', suffix: '7', frets: [-1, 0, 2, 0, 2, 0], fingers: [0, 0, 2, 0, 3, 0], barres: [], baseFret: 1 },
+        { name: 'B7', suffix: '7', frets: [-1, 2, 1, 2, 0, 2], fingers: [0, 2, 1, 3, 0, 4], barres: [], baseFret: 1 },
+        { name: 'Cmaj7', suffix: 'maj7', frets: [-1, 3, 2, 0, 0, 0], fingers: [0, 3, 2, 0, 0, 0], barres: [], baseFret: 1 },
+        { name: 'Fmaj7', suffix: 'maj7', frets: [-1, -1, 3, 2, 1, 0], fingers: [0, 0, 3, 2, 1, 0], barres: [], baseFret: 1 },
+        { name: 'Am7', suffix: 'm7', frets: [-1, 0, 2, 0, 1, 0], fingers: [0, 0, 2, 0, 1, 0], barres: [], baseFret: 1 },
+        { name: 'Dm7', suffix: 'm7', frets: [-1, -1, 0, 2, 1, 1], fingers: [0, 0, 0, 2, 1, 1], barres: [1], baseFret: 1 },
     ],
-    Other: [
-        { name: 'C', suffix: 'add9', frets: [-1, 3, 2, 0, 3, 0], fingers: [0, 2, 1, 0, 3, 0], barres: [], baseFret: 1 },
-        { name: 'D', suffix: 'sus2', frets: [-1, -1, 0, 2, 3, 0], fingers: [0, 0, 0, 1, 2, 0], barres: [], baseFret: 1 },
-        { name: 'E', suffix: 'sus4', frets: [0, 2, 2, 2, 0, 0], fingers: [0, 2, 3, 4, 0, 0], barres: [], baseFret: 1 },
-        { name: 'A', suffix: 'sus2', frets: [-1, 0, 2, 2, 0, 0], fingers: [0, 0, 1, 2, 0, 0], barres: [], baseFret: 1 },
-        { name: 'A', suffix: 'sus4', frets: [-1, 0, 2, 2, 3, 0], fingers: [0, 0, 1, 2, 3, 0], barres: [], baseFret: 1 },
-        { name: 'G', suffix: 'sus4', frets: [3, 3, 0, 0, 1, 3], fingers: [2, 3, 0, 0, 1, 4], barres: [], baseFret: 1 },
-        { name: 'D', suffix: 'sus4', frets: [-1, -1, 0, 2, 3, 3], fingers: [0, 0, 0, 1, 2, 3], barres: [], baseFret: 1 },
+    Extended: [
+        { name: 'C9', suffix: '9', frets: [-1, 3, 2, 3, 3, -1], fingers: [0, 2, 1, 3, 4, 0], barres: [3], baseFret: 1 },
+        { name: 'G13', suffix: '13', frets: [3, -1, 3, 4, 5, -1], fingers: [1, 0, 2, 3, 4, 0], barres: [], baseFret: 1 },
+        { name: 'D6', suffix: '6', frets: [-1, -1, 0, 2, 0, 2], fingers: [0, 0, 0, 1, 0, 2], barres: [], baseFret: 1 },
+        { name: 'Cadd9', suffix: 'add9', frets: [-1, 3, 2, 0, 3, 0], fingers: [0, 2, 1, 0, 3, 0], barres: [], baseFret: 1 },
+        { name: 'A11', suffix: '11', frets: [5, 5, 5, 4, 3, 3], fingers: [3, 4, 2, 1, 1, 1], barres: [3], baseFret: 3 },
+    ],
+    Suspended: [
+        { name: 'Dsus2', suffix: 'sus2', frets: [-1, -1, 0, 2, 3, 0], fingers: [0, 0, 0, 1, 2, 0], barres: [], baseFret: 1 },
+        { name: 'Dsus4', suffix: 'sus4', frets: [-1, -1, 0, 2, 3, 3], fingers: [0, 0, 0, 1, 3, 4], barres: [], baseFret: 1 },
+        { name: 'Asus2', suffix: 'sus2', frets: [-1, 0, 2, 2, 0, 0], fingers: [0, 0, 1, 2, 0, 0], barres: [], baseFret: 1 },
+        { name: 'Asus4', suffix: 'sus4', frets: [-1, 0, 2, 2, 3, 0], fingers: [0, 0, 1, 2, 3, 0], barres: [], baseFret: 1 },
+        { name: 'Esus4', suffix: 'sus4', frets: [0, 2, 2, 2, 0, 0], fingers: [0, 2, 3, 4, 0, 0], barres: [], baseFret: 1 },
+        { name: 'Gsus4', suffix: 'sus4', frets: [3, 3, 0, 0, 1, 3], fingers: [2, 3, 0, 0, 1, 4], barres: [], baseFret: 1 },
     ],
 };
-
 /* ─── Chord Diagram SVG ─── */
 const DIAGRAM_W = 130;
 const DIAGRAM_H = 160;
