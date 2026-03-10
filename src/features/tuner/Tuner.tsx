@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, Dimensions } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { TunerService, TunerResult } from '../../services/TunerService';
+import { PitchDetectionService, PitchData } from '../../services/PitchDetectionService';
 import Animated, { useAnimatedStyle, withSpring, useSharedValue } from 'react-native-reanimated';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -20,12 +21,52 @@ const GUITAR_STRINGS = [
 
 export const Tuner: React.FC = () => {
     const [result, setResult] = useState<TunerResult>({
-        note: 'E', octave: 2, cents: 0, frequency: 82.41,
+        note: '--', octave: 0, cents: 0, frequency: 0,
     });
     const [activeString, setActiveString] = useState(5);
+    const [micActive, setMicActive] = useState(false);
     const needleX = useSharedValue(0);
+    const useFallback = useRef(false);
 
+    // Callback for real mic pitch data
+    const onPitch = useCallback((data: PitchData) => {
+        if (data.frequency > 0) {
+            const det = TunerService.getNoteFromFrequency(data.frequency);
+            setResult(det);
+            needleX.value = withSpring(det.cents, { damping: 14, stiffness: 120 });
+        }
+    }, []);
+
+    // Start mic on mount, fall back to mock if native module unavailable
     useEffect(() => {
+        let interval: ReturnType<typeof setInterval>;
+
+        (async () => {
+            const started = await PitchDetectionService.start(onPitch);
+            if (started) {
+                setMicActive(true);
+            } else {
+                // Fallback: mock pitch detection for Expo Go
+                useFallback.current = true;
+                interval = setInterval(() => {
+                    const base = GUITAR_STRINGS[activeString].freq;
+                    const mock = base + (Math.random() - 0.5) * 4;
+                    const det = TunerService.getNoteFromFrequency(mock);
+                    setResult(det);
+                    needleX.value = withSpring(det.cents, { damping: 14, stiffness: 120 });
+                }, 120);
+            }
+        })();
+
+        return () => {
+            PitchDetectionService.stop();
+            if (interval) clearInterval(interval);
+        };
+    }, []);
+
+    // Re-start mock interval if active string changes (fallback only)
+    useEffect(() => {
+        if (!useFallback.current) return;
         const interval = setInterval(() => {
             const base = GUITAR_STRINGS[activeString].freq;
             const mock = base + (Math.random() - 0.5) * 4;
@@ -52,7 +93,7 @@ export const Tuner: React.FC = () => {
     return (
         <View style={{ flex: 1, alignItems: 'center', backgroundColor: '#0f1d23' }}>
             {/* Circular Gauge */}
-            <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 24 }}>
+            <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 16 }}>
                 <View style={{
                     width: CIRCLE_OUTER, height: CIRCLE_OUTER,
                     alignItems: 'center', justifyContent: 'center',
@@ -96,12 +137,18 @@ export const Tuner: React.FC = () => {
 
                     {/* Center Content */}
                     <View style={{ alignItems: 'center' }}>
-                        <Text style={{
-                            fontSize: 11, fontWeight: '700', letterSpacing: 3,
-                            color: '#25bdf8', textTransform: 'uppercase', marginBottom: 2,
-                        }}>
-                            Standard
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <View style={{
+                                width: 6, height: 6, borderRadius: 3,
+                                backgroundColor: micActive ? '#22c55e' : '#ef4444',
+                            }} />
+                            <Text style={{
+                                fontSize: 11, fontWeight: '700', letterSpacing: 3,
+                                color: '#25bdf8', textTransform: 'uppercase',
+                            }}>
+                                {micActive ? 'Live' : 'Demo'}
+                            </Text>
+                        </View>
                         <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
                             <Text style={{
                                 fontSize: 80, fontWeight: '900', color: '#f1f5f9',
@@ -137,7 +184,7 @@ export const Tuner: React.FC = () => {
             </View>
 
             {/* Cents Scale */}
-            <View style={{ width: '100%', paddingHorizontal: 28, marginTop: 32 }}>
+            <View style={{ width: '100%', paddingHorizontal: 24, marginTop: 24 }}>
                 {/* Scale labels */}
                 <View style={{
                     flexDirection: 'row', justifyContent: 'space-between',
@@ -176,7 +223,7 @@ export const Tuner: React.FC = () => {
             </View>
 
             {/* Cents readout */}
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 12 }}>
                 <Text style={{ color: '#f1f5f9', fontSize: 28, fontWeight: '700' }}>
                     {result.cents}
                 </Text>
@@ -190,8 +237,8 @@ export const Tuner: React.FC = () => {
 
             {/* String Selector */}
             <View style={{
-                flexDirection: 'row', marginTop: 'auto', marginBottom: 16,
-                paddingHorizontal: 20, gap: 8, width: '100%',
+                flexDirection: 'row', marginTop: 'auto', marginBottom: 12,
+                paddingHorizontal: 24, gap: 8, width: '100%',
             }}>
                 {GUITAR_STRINGS.map((s, i) => {
                     const isActive = activeString === i;

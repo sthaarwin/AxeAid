@@ -99,34 +99,16 @@ const BackIcon = ({ color }: { color: string }) => (
     </Svg>
 );
 
-/* ─── Tab bar configs per screen ─── */
-const TUNER_TABS = [
-    { key: 'tuner', label: 'Tuner', Icon: MusicNoteIcon },
-    { key: 'metronome', label: 'Tempo', Icon: TimerIcon },
-    { key: 'chords', label: 'Chords', Icon: ChordsIcon },
-    { key: 'history', label: 'History', Icon: HistoryIcon },
-];
-
-const METRONOME_TABS = [
-    { key: 'metronome', label: 'Tempo', Icon: TimerIcon },
-    { key: 'tuner', label: 'Sound', Icon: SoundIcon },
-    { key: 'timer', label: 'Timer', Icon: TimerIcon },
-    { key: 'history', label: 'Recent', Icon: HistoryIcon },
-];
-
-const EARTRAINER_TABS = [
-    { key: 'ear-training', label: 'Practice', Icon: PracticeIcon },
-    { key: 'stats', label: 'Stats', Icon: StatsIcon },
-    { key: 'profile', label: 'Profile', Icon: PersonIcon },
+/* ─── Consistent bottom tab bar ─── */
+const TAB_BAR = [
+    { key: 'tuner' as Tab, label: 'Tuner', Icon: MusicNoteIcon },
+    { key: 'metronome' as Tab, label: 'Tempo', Icon: TimerIcon },
+    { key: 'ear-training' as Tab, label: 'Practice', Icon: PracticeIcon },
 ];
 
 export default function App() {
     const [activeTab, setActiveTab] = useState<Tab>('tuner');
     const [earLevel] = useState(3);
-
-    const tabConfigs = activeTab === 'tuner' ? TUNER_TABS
-        : activeTab === 'metronome' ? METRONOME_TABS
-        : EARTRAINER_TABS;
 
     return (
         <SafeAreaProvider>
@@ -194,27 +176,18 @@ export default function App() {
                 </View>
 
                 {/* Bottom Nav */}
-                <SafeAreaView edges={['bottom']} style={{ backgroundColor: activeTab === 'ear-training' ? '#0f172a' : 'rgba(15,23,42,0.5)' }}>
+                <SafeAreaView edges={['bottom']} style={{ backgroundColor: 'rgba(15,23,42,0.5)' }}>
                     <View style={{
                         flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center',
-                        paddingTop: 12, paddingBottom: 24,
+                        paddingTop: 10, paddingBottom: 6,
                         borderTopWidth: 1, borderTopColor: '#1e293b',
                     }}>
-                        {tabConfigs.map((tab) => {
-                            // Determine if this tab is the "active" one
-                            const isActive = tab.key === activeTab
-                                || (activeTab === 'metronome' && tab.key === 'metronome')
-                                || (activeTab === 'ear-training' && tab.key === 'ear-training');
-                            const navKey = tab.key as Tab;
-
+                        {TAB_BAR.map((tab) => {
+                            const isActive = tab.key === activeTab;
                             return (
                                 <TouchableOpacity
-                                    key={tab.key + tab.label}
-                                    onPress={() => {
-                                        if (navKey === 'tuner' || navKey === 'metronome' || navKey === 'ear-training') {
-                                            setActiveTab(navKey);
-                                        }
-                                    }}
+                                    key={tab.key}
+                                    onPress={() => setActiveTab(tab.key)}
                                     activeOpacity={0.7}
                                     style={{ alignItems: 'center', gap: 4 }}
                                 >

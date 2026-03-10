@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { View, Text, TouchableOpacity, Dimensions, PanResponder } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
@@ -46,6 +46,33 @@ export const Metronome: React.FC<MetronomeProps> = ({ initialBpm = 120 }) => {
     const soundRef = useRef<Audio.Sound | null>(null);
     const beatRef = useRef(-1);
     const pulseScale = useSharedValue(1);
+    const bpmRef = useRef(initialBpm);
+
+    // Keep ref in sync so PanResponder always sees latest value
+    useEffect(() => { bpmRef.current = bpm; }, [bpm]);
+
+    // Drag gesture: dragging UP increases BPM, dragging DOWN decreases
+    const panResponder = useMemo(() => {
+        let accumulator = 0;
+        return PanResponder.create({
+            onStartShouldSetPanResponder: () => true,
+            onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 5,
+            onPanResponderGrant: () => {
+                accumulator = 0;
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            },
+            onPanResponderMove: (_, gestureState) => {
+                // Every 6px of drag = 1 BPM change
+                const newAccum = -gestureState.dy / 6;
+                const delta = Math.trunc(newAccum) - Math.trunc(accumulator);
+                if (delta !== 0) {
+                    setBpm(b => Math.min(MAX_BPM, Math.max(MIN_BPM, b + delta)));
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }
+                accumulator = newAccum;
+            },
+        });
+    }, []);
 
     useEffect(() => {
         (async () => {
@@ -103,7 +130,7 @@ export const Metronome: React.FC<MetronomeProps> = ({ initialBpm = 120 }) => {
     return (
         <View style={{ flex: 1, alignItems: 'center', backgroundColor: '#0f1d23' }}>
             {/* BPM Display */}
-            <View style={{ alignItems: 'center', marginTop: 24 }}>
+            <View style={{ alignItems: 'center', marginTop: 10 }}>
                 <Animated.Text style={[{
                     fontSize: 72, fontWeight: '700', color: '#ffffff',
                     letterSpacing: -3,
@@ -119,7 +146,7 @@ export const Metronome: React.FC<MetronomeProps> = ({ initialBpm = 120 }) => {
             </View>
 
             {/* Beat Indicators */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20, marginTop: 24 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20, marginTop: 16 }}>
                 {Array.from({ length: BEATS_PER_MEASURE }, (_, i) => {
                     const isDownbeat = i === 0;
                     const isActive = isPlaying && currentBeat === i;
@@ -161,7 +188,7 @@ export const Metronome: React.FC<MetronomeProps> = ({ initialBpm = 120 }) => {
             </View>
 
             {/* Circular Dial */}
-            <View style={{ marginTop: 20, width: DIAL_SIZE, height: DIAL_SIZE }}>
+            <View style={{ marginTop: 14, width: DIAL_SIZE, height: DIAL_SIZE }}>
                 {/* Outer thick ring */}
                 <View style={{
                     position: 'absolute', inset: 0,
@@ -192,16 +219,19 @@ export const Metronome: React.FC<MetronomeProps> = ({ initialBpm = 120 }) => {
                     />
                 </Svg>
 
-                {/* Center dial area */}
-                <View style={{
-                    position: 'absolute', top: DIAL_SIZE * 0.18, left: DIAL_SIZE * 0.18,
-                    width: DIAL_SIZE * 0.64, height: DIAL_SIZE * 0.64,
-                    borderRadius: DIAL_SIZE * 0.32,
-                    backgroundColor: '#1e293b', borderWidth: 1, borderColor: '#334155',
-                    alignItems: 'center', justifyContent: 'center',
-                    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3, shadowRadius: 12, elevation: 8,
-                }}>
+                {/* Center dial area — draggable */}
+                <View
+                    {...panResponder.panHandlers}
+                    style={{
+                        position: 'absolute', top: DIAL_SIZE * 0.18, left: DIAL_SIZE * 0.18,
+                        width: DIAL_SIZE * 0.64, height: DIAL_SIZE * 0.64,
+                        borderRadius: DIAL_SIZE * 0.32,
+                        backgroundColor: '#1e293b', borderWidth: 1, borderColor: '#334155',
+                        alignItems: 'center', justifyContent: 'center',
+                        shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.3, shadowRadius: 12, elevation: 8,
+                    }}
+                >
                     <Text style={{ color: '#25bdf8', fontSize: 28, marginBottom: 2 }}>⇕</Text>
                     <Text style={{
                         color: '#94a3b8', fontSize: 10, fontWeight: '500',
@@ -235,7 +265,7 @@ export const Metronome: React.FC<MetronomeProps> = ({ initialBpm = 120 }) => {
             </View>
 
             {/* Quick Increment Buttons */}
-            <View style={{ flexDirection: 'row', gap: 16, marginTop: 16 }}>
+            <View style={{ flexDirection: 'row', gap: 16, marginTop: 14 }}>
                 <TouchableOpacity
                     onPress={() => setBpm(b => Math.max(MIN_BPM, b - 1))}
                     activeOpacity={0.7}
@@ -264,7 +294,7 @@ export const Metronome: React.FC<MetronomeProps> = ({ initialBpm = 120 }) => {
                 activeOpacity={0.8}
                 style={{
                     width: 80, height: 80, borderRadius: 40,
-                    marginTop: 20, marginBottom: 16,
+                    marginTop: 16, marginBottom: 12,
                     backgroundColor: '#25bdf8',
                     alignItems: 'center', justifyContent: 'center',
                     shadowColor: '#25bdf8',

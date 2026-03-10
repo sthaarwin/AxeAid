@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, TouchableOpacity, Dimensions, ScrollView } from 'react-native';
 import { EarTrainerService } from './EarTrainerService';
 import { TunerService } from '../../services/TunerService';
+import { PitchDetectionService, PitchData } from '../../services/PitchDetectionService';
 import Animated, {
     FadeIn,
     useSharedValue,
@@ -43,6 +44,15 @@ export const EarTrainer: React.FC = () => {
     const [targetNote, setTargetNote] = useState(ALL_NOTES[0]);
     const [detectedNote, setDetectedNote] = useState('--');
     const [feedback, setFeedback] = useState('');
+    const [micAvailable, setMicAvailable] = useState(false);
+    const gameStateRef = useRef(gameState);
+    const targetNoteRef = useRef(targetNote);
+    const levelRef = useRef(level);
+
+    // Keep refs in sync for mic callback
+    useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+    useEffect(() => { targetNoteRef.current = targetNote; }, [targetNote]);
+    useEffect(() => { levelRef.current = level; }, [level]);
 
     const pingScale = useSharedValue(1);
     const pingOpacity = useSharedValue(0.75);
@@ -68,7 +78,11 @@ export const EarTrainer: React.FC = () => {
         setDetectedNote('--');
         setFeedback('');
         setGameState('playing');
-        await EarTrainerService.playTargetNote(note.freq).catch(() => {});
+
+        // Play the reference tone using local WAV (e.g. "A4")
+        const noteName = `${note.note}${note.octave}`;
+        await EarTrainerService.playTargetNote(noteName).catch(() => {});
+
         setTimeout(() => setGameState('listening'), 2000);
     }, []);
 
@@ -79,32 +93,77 @@ export const EarTrainer: React.FC = () => {
         startRound();
     }, [startRound]);
 
-    useEffect(() => {
-        let interval: NodeJS.Timeout;
-        if (gameState === 'listening') {
-            interval = setInterval(() => {
-                const offset = (Math.random() - 0.5) * LEVELS[level].threshold * 2.5;
-                const mockFreq = targetNote.freq + offset;
-                const result = TunerService.getNoteFromFrequency(mockFreq);
-                setDetectedNote(`${result.note}${result.octave}`);
+    // Mic-based pitch callback for listening phase
+    const onPitch = useCallback((data: PitchData) => {
+        if (gameStateRef.current !== 'listening') return;
+        if (data.frequency <= 0) return;
 
-                const eval_ = EarTrainerService.compareNotes(targetNote.freq, mockFreq);
-                if (eval_.isSuccess) {
-                    setGameState('success');
-                    setScore(s => s + 1);
-                    setStreak(s => s + 1);
-                    setFeedback('Perfect match! 🎯');
-                    clearInterval(interval);
-                } else {
-                    const dir = eval_.diffCents > 0
-                        ? 'Too high! Go down a semitone.'
-                        : 'Too low! Go up a semitone.';
-                    setFeedback(dir);
-                }
-            }, 600);
+        const result = TunerService.getNoteFromFrequency(data.frequency);
+        setDetectedNote(`${result.note}${result.octave}`);
+
+        const target = targetNoteRef.current;
+        const threshold = LEVELS[levelRef.current].threshold;
+        const eval_ = EarTrainerService.compareNotes(target.freq, data.frequency, threshold);
+
+        if (eval_.isSuccess) {
+            setGameState('success');
+            setScore(s => s + 1);
+            setStreak(s => s + 1);
+            setFeedback('Perfect match! 🎯');
+            PitchDetectionService.stop();
+        } else {
+            const dir = eval_.diffCents > 0
+                ? 'Too high! Go down a semitone.'
+                : 'Too low! Go up a semitone.';
+            setFeedback(dir);
         }
-        return () => clearInterval(interval);
-    }, [gameState, targetNote, level]);
+    }, []);
+
+    // Start/stop mic when entering/leaving listening state
+    useEffect(() => {
+        let fallbackInterval: NodeJS.Timeout;
+
+        if (gameState === 'listening') {
+            (async () => {
+                const started = await PitchDetectionService.start(onPitch);
+                if (started) {
+                    setMicAvailable(true);
+                } else {
+                    // Fallback: mock detection for Expo Go
+                    setMicAvailable(false);
+                    fallbackInterval = setInterval(() => {
+                        const target = targetNoteRef.current;
+                        const lvl = levelRef.current;
+                        const offset = (Math.random() - 0.5) * LEVELS[lvl].threshold * 2.5;
+                        const mockFreq = target.freq + offset;
+                        const result = TunerService.getNoteFromFrequency(mockFreq);
+                        setDetectedNote(`${result.note}${result.octave}`);
+
+                        const eval_ = EarTrainerService.compareNotes(target.freq, mockFreq, LEVELS[lvl].threshold);
+                        if (eval_.isSuccess) {
+                            setGameState('success');
+                            setScore(s => s + 1);
+                            setStreak(s => s + 1);
+                            setFeedback('Perfect match! 🎯');
+                            clearInterval(fallbackInterval);
+                        } else {
+                            const dir = eval_.diffCents > 0
+                                ? 'Too high! Go down a semitone.'
+                                : 'Too low! Go up a semitone.';
+                            setFeedback(dir);
+                        }
+                    }, 600);
+                }
+            })();
+        } else {
+            PitchDetectionService.stop();
+        }
+
+        return () => {
+            PitchDetectionService.stop();
+            if (fallbackInterval) clearInterval(fallbackInterval);
+        };
+    }, [gameState, onPitch]);
 
     const handleNext = () => {
         const nextRound = round + 1;
@@ -126,7 +185,7 @@ export const EarTrainer: React.FC = () => {
             contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 24 }}
         >
             {/* Session Progress */}
-            <View style={{ marginTop: 8 }}>
+            <View style={{ marginTop: 16 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                     <View>
                         <Text style={{
@@ -151,7 +210,7 @@ export const EarTrainer: React.FC = () => {
                 {/* Progress bar */}
                 <View style={{
                     height: 12, backgroundColor: '#1e293b', borderRadius: 999,
-                    overflow: 'hidden', marginTop: 12,
+                    overflow: 'hidden', marginTop: 14,
                 }}>
                     <View style={{
                         height: '100%', width: `${progress * 100}%`,
@@ -161,7 +220,7 @@ export const EarTrainer: React.FC = () => {
             </View>
 
             {/* Target Circle */}
-            <View style={{ alignItems: 'center', marginTop: 32, paddingVertical: 16 }}>
+            <View style={{ alignItems: 'center', marginTop: 24, paddingVertical: 12 }}>
                 <View style={{ alignItems: 'center', justifyContent: 'center' }}>
                     {/* Glow backdrop */}
                     {gameState !== 'idle' && (
@@ -206,7 +265,7 @@ export const EarTrainer: React.FC = () => {
                 style={{
                     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
                     backgroundColor: '#25bdf8', borderRadius: 12,
-                    paddingVertical: 16, marginTop: 8, gap: 12,
+                    paddingVertical: 16, marginTop: 16, gap: 12,
                     shadowColor: '#25bdf8', shadowOffset: { width: 0, height: 4 },
                     shadowOpacity: 0.2, shadowRadius: 12, elevation: 4,
                 }}
@@ -222,7 +281,7 @@ export const EarTrainer: React.FC = () => {
                 <View style={{
                     backgroundColor: 'rgba(15,23,42,0.5)',
                     borderWidth: 1, borderColor: '#1e293b',
-                    borderRadius: 16, padding: 20, marginTop: 24,
+                    borderRadius: 16, padding: 20, marginTop: 20,
                 }}>
                     {/* Listening indicator */}
                     {gameState === 'listening' && (
