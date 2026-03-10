@@ -1,12 +1,17 @@
 export const colors = {
-    primary: '#00FBFF', // Neon Cyan
-    background: '#0D0D0D', // Deep charcoal
-    surface: '#1A1A1A',
+    primary: '#25bdf8',
+    background: '#0f1d23',
+    surface: '#111827',
+    surfaceLight: '#1a2634',
     text: '#FFFFFF',
-    textSecondary: '#A0A0A0',
-    error: '#FF4D4D',
-    success: '#4DFF88',
-    accent: '#7000FF', // Deep Purple
+    textSecondary: '#94a3b8',
+    textMuted: '#64748b',
+    error: '#ef4444',
+    success: '#22c55e',
+    accent: '#7000FF',
+    border: '#1e293b',
+    slate800: '#1e293b',
+    slate900: '#0f172a',
 };
 
 export const spacing = {

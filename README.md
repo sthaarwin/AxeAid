@@ -1,2 +1,2 @@
 # AxeAid
-Cross-platform guitar toolkit for tuning, timing, and ear training.
+Guitar toolkit for tuning, timing, and ear training.
